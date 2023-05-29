@@ -3,13 +3,11 @@ import {
     aws_dynamodb as dynamodb,
     aws_lambda as lambda,
     aws_lambda_event_sources as lambda_event_sources,
-    aws_lambda_nodejs as lambdajs
 } from 'aws-cdk-lib';
 import {Construct} from 'constructs';
 import * as apigatewayv2_integrations from '@aws-cdk/aws-apigatewayv2-integrations-alpha';
 import * as apigatewayv2 from '@aws-cdk/aws-apigatewayv2-alpha';
 import {Config} from "../config/config";
-import * as path from "path";
 
 export class SlessHexStack extends cdk.Stack {
     constructor(scope: Construct, config: Config) {
@@ -26,10 +24,10 @@ export class SlessHexStack extends cdk.Stack {
             stream: dynamodb.StreamViewType.NEW_IMAGE,
         })
 
-        const processItemLambda = new lambdajs.NodejsFunction(this, 'processItem', {
+        const processItemLambda = new lambda.Function(this, 'processItem', {
             runtime: lambda.Runtime.NODEJS_16_X,
-            entry: path.join(__dirname, '..', '..', 'src', 'processItem', 'function.js'),
-            handler: 'handler',
+            code: lambda.Code.fromAsset('../src'),
+            handler: 'processItem/function.handler',
             description: 'Triggered by DynamoDB Streams. Does some work on newly created Item',
             memorySize: 128,
             timeout: cdk.Duration.seconds(5),

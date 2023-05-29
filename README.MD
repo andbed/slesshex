@@ -1,5 +1,6 @@
 # serverless-hexagonal-template
-https://github.com/serverlesspolska/serverless-hexagonal-template
+This is a fork of Pawel Zubkiewicz's https://github.com/serverlesspolska/serverless-hexagonal-template
+to demo CDK.
 
 Highly opinionated project template for [Serverless Framework](https://www.serverless.com/) that applies **hexagonal architecture** principles to the serverless world. Crafted with easy testing in mind.
 
