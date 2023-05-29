@@ -1,0 +1,21 @@
+# package directories
+node_modules
+jspm_packages
+
+# Serverless directories
+.serverless
+
+# local config files
+.envrc
+.env
+.nvmrc
+.awsenv
+.aws_env_vars_from_cdk.json
+
+# IDE
+.vscode
+
+# trash
+.DS_store
+.DS_Store
+template.drawio.bak

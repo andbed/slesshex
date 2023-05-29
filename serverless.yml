@@ -1,0 +1,114 @@
+service: abtest
+
+frameworkVersion: '>=3.19.0'
+
+plugins:
+  - serverless-iam-roles-per-function
+  - serverless-export-env
+
+provider:
+  name: aws
+  stage: ${opt:stage, file(./config/stage.js):userStage}
+  runtime: nodejs16.x
+  profile: ${self:custom.deployment.profile.${self:custom.globalStage}}
+  region: ${self:custom.deployment.region.${self:custom.globalStage}}
+  logRetentionInDays: 60 # how long logs are kept in CloudWatch
+  environment:
+    # required Environment Variables. Don't remove.
+    stage: ${self:provider.stage}
+    region: ${self:provider.region}
+    service: ${self:service}
+    # your variables - optional
+    httpApiGatewayEndpointId: !Ref HttpApi
+  tags:
+    Application: ${self:service}
+    Stage: ${self:provider.stage}
+
+configValidationMode: warn
+
+custom:
+  deployment: ${file(config/deployment.yml):deployment}
+  globalStage: ${self:custom.deployment.globalStages.${self:provider.stage}, 'dev'}
+  description: Your short project description that will be shown in Lambda -> Applications console & in CloudFormation stack
+  tableName: ${self:service}-${self:provider.stage}
+  export-env: # serverless-export-env config
+    filename: .awsenv # custom filename to avoid conflict with Serverless Framework '.env' auto loading feature
+    overwrite: true
+
+functions:
+  createItem:
+    handler: src/createItem/function.handler
+    description: Create Item in repository
+    memorySize: 128
+    timeout: 5
+    environment:
+      tableName: ${self:custom.tableName}
+    events:
+      - httpApi:
+          method: POST
+          path: /item
+    iamRoleStatements:
+      - Sid: DynamoDBReadWrite
+        Effect: Allow
+        Action:
+          - dynamodb:PutItem
+          - dynamodb:UpdateItem
+        Resource: 
+          - !GetAtt Table.Arn
+
+  processItem:
+    handler: src/processItem/function.handler
+    description: Triggered by DynamoDB Streams. Does some work on newly created Item
+    memorySize: 128
+    timeout: 5
+    environment:
+      message: Hello World!
+    events:
+      - stream:
+          type: dynamodb
+          arn: !GetAtt Table.StreamArn
+          maximumRetryAttempts: 1
+          batchSize: 1
+    iamRoleStatements:
+      - Sid: DynamoDBRead
+        Effect: Allow
+        Action:
+          - dynamodb:GetItem
+        Resource: 
+          - !GetAtt Table.Arn
+
+package:
+  patterns:
+    # include
+    - src/**
+    # exclude
+    - '!*'
+    - '!__tests__/**'
+    - '!documentation/**'
+    - '!config/**'
+
+resources:
+  Description: ${self:custom.description}
+
+  Resources:
+
+    Table:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        AttributeDefinitions:
+          - AttributeName: PK
+            AttributeType: S
+        KeySchema:
+          - AttributeName: PK
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+        TableName: ${self:custom.tableName}
+        Tags:
+          - Key: Application
+            Value: ${self:service}
+          - Key: Stage
+            Value: ${self:provider.stage}
+          - Key: StackName
+            Value: !Ref AWS::StackId
+        StreamSpecification:
+          StreamViewType: NEW_IMAGE
